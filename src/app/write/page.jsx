@@ -13,7 +13,10 @@ import {
   getDownloadURL,
 } from "firebase/storage";
 import { app } from "@/utils/firebase";
-import ReactQuill from "react-quill";
+import dynamic from "next/dynamic";
+
+// Dynamically import ReactQuill with SSR disabled
+const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
 
 const WritePage = () => {
   const { status } = useSession();
@@ -27,8 +30,8 @@ const WritePage = () => {
   const [catSlug, setCatSlug] = useState("");
 
   useEffect(() => {
-    const storage = getStorage(app);
-    const upload = () => {
+    if (file) {
+      const storage = getStorage(app);
       const name = new Date().getTime() + file.name;
       const storageRef = ref(storage, name);
 
@@ -49,16 +52,16 @@ const WritePage = () => {
               break;
           }
         },
-        (error) => {},
+        (error) => {
+          console.error("Upload failed", error);
+        },
         () => {
           getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
             setMedia(downloadURL);
           });
         }
       );
-    };
-
-    file && upload();
+    }
   }, [file]);
 
   if (status === "loading") {
@@ -67,6 +70,7 @@ const WritePage = () => {
 
   if (status === "unauthenticated") {
     router.push("/");
+    return null; // Return null to avoid rendering the component until redirected
   }
 
   const slugify = (str) =>
